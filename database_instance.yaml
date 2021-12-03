@@ -1,0 +1,103 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Create database instance"
+
+Parameters:
+  ParamInstanceDBName:
+    Type: String
+    Default: airflow
+    Description: Instance name
+  
+  ParamDBEngine:
+    Type: String
+    Default: postgres
+    AllowedValues:
+      - mariadb
+      - mysql
+      - postgres
+    Description: Database engine
+
+  ParamEngineVersion:
+    Type: String
+    Default: '13'
+    Description: Engine version
+
+  ParamDBInstanceTypeParameter:
+    Type: String
+    Default: db.t3.micro
+    AllowedValues:
+      - db.t3.medium
+      - db.t3.small
+      - db.t3.micro
+    Description: Enter db.t3.medium, db.t3.small, or  db.t3.micro. Default is db.t3.micro.
+
+  ParamDBName:
+    Type: String
+    Default: airflow
+    Description: Default database name
+
+  ParamDBAdminName:
+    Type: String
+    Default: airflow 
+    Description: Admin name
+  
+  ParamDBPassword:
+    NoEcho: 'true'
+    Type: String
+    Description: Database password
+  
+  ParamDBAllocatedStorage:
+    Default: '50'
+    Description: The initial size of the database (GiB)
+    Type: Number
+    MinValue: '20'
+    MaxValue: '65536'
+
+  ParamDBMaxAllocatedStorage:
+    Default: '50'
+    Description: The max size of the database (GiB)
+    Type: Number
+    MinValue: '20'
+    MaxValue: '65536'
+  
+  ParamIops:
+    Type: Integer
+    Default: 1000
+    Description: The number of I/O operations per second (IOPS) 
+
+  ParamAvailabilityZone:
+    Type: String
+    Default: 'us-east-1a'
+    Description: Availability Zone
+  
+  NetworkStack:
+    Type: String
+    Default: NetworkStack
+
+Resources:
+  DBSubnetGroup: 
+    Type: "AWS::RDS::DBSubnetGroup"
+    Properties: 
+      DBSubnetGroupDescription: description
+      SubnetIds: 
+        - !ImportValue
+          'Fn::Sub': "${NetworkStack}-PrivateSubnetAID"
+        - !ImportValue
+          'Fn::Sub': "${NetworkStack}-PrivateSubnetBID"
+
+  DatabaseInstance: 
+    Type: AWS::RDS::DBInstance
+      Properties:
+        DBInstanceIdentifier: !Ref ParamInstanceDBName
+        Engine: !Ref ParamDBEngine
+        EngineVersion: !Ref 
+        DBInstanceClass: !Ref ParamDBInstanceTypeParameter
+        DBName: !Ref ParamDBName
+        MasterUsername: !Ref ParamDBAdminName
+        MasterUserPassword: !Ref ParamDBPassword
+        AllocatedStorage: !Ref ParamDBAllocatedStorage
+        MaxAllocatedStorage: !Ref ParamDBMaxAllocatedStorage
+        AvailabilityZone: !Ref ParamAvailabilityZone
+        StorageType: io1
+        Iops: !Ref ParamIops
+        PubliclyAccessible: 'true'
+        DBSubnetGroupName: !Ref DBSubnetGroup

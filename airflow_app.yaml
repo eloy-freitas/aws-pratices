@@ -1,0 +1,99 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Create app resources"
+
+Parameters:
+  # InstanceTypeParameter:
+  #   Type: String
+  #   Default: t2.micro
+  #   AllowedValues:
+  #     - t2.micro
+  #     - m1.small
+  #     - m1.large
+  #   Description: Enter t2.micro, m1.small, or m1.large. Default is t2.micro.
+
+  # ImageTypeParameter:
+  #   Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+  #   Description: The ID of the AMI.
+  #   Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+    
+  AirflowNetworkStack:
+    Type: String
+    Default: AirflowNetwork
+
+  DBInstanceTypeParameter:
+    Type: String
+    Default: db.t3.micro
+    AllowedValues:
+      - db.t3.medium
+      - db.t3.small
+      - db.t3.micro
+    Description: Enter db.t3.medium, db.t3.small, or  db.t3.micro. Default is db.t3.micro.
+
+  InstanceDBName:
+    Type: String
+    Default: airflow
+
+  DBAdminName:
+    Type: String
+    Default: airflow 
+  
+  DBPassword:
+    NoEcho: 'true'
+    Type: String
+
+  DBEngine:
+    Type: String
+    Default: postgres
+    AllowedValues:
+      - mariadb
+      - mysql
+      - postgres
+      
+  DBAllocatedStorage:
+    Default: '50'
+    Description: The size of the database (GiB)
+    Type: Number
+    MinValue: '20'
+    MaxValue: '65536'
+
+Resources:
+  # bastionInstance: 
+  #  Type: AWS::EC2::Instance
+  #  Properties:
+  #    InstanceType: !Ref InstanceTypeParameter
+  #    ImageId: !Ref ImageTypeParameter
+  #    KeyName: "bastion"
+  #    BlockDeviceMappings:
+  #      - DeviceName: "/dev/sdm"
+  #        Ebs: 
+  #          VolumeType: "io1"
+  #          Iops: "200"
+  #          DeleteOnTermination: "true"
+  #          VolumeSize: "20"
+  #    NetworkInterfaces:
+  #      - GroupSet: 
+  #        - !ImportValue 
+  #          'Fn::Sub': "${AirflowNetworkStack}-BastionSGID"
+  #        DeviceIndex: "0"
+  #        AssociatePublicIpAddress: 'true'
+  #        SubnetId: !ImportValue
+  #          'Fn::Sub': "${AirflowNetworkStack}-PublicSubnetID"
+
+  databaseInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: !Ref DBAllocatedStorage
+      AvailabilityZone: us-east-1a
+      DBInstanceClass: !Ref DBInstanceTypeParameter
+      DBName: !Ref InstanceDBName
+      DBSecurityGroups: 
+        - !ImportValue
+          'Fn::Sub': "${AirflowNetworkStack}-DatabaseSGID"
+      DBSubnetGroupName: !ImportValue
+        'Fn::Sub': "${AirflowNetworkStack}-DatabaseSubnetGroupID"
+      DeleteAutomatedBackups: "true"
+      Engine: !Ref DBEngine
+      EngineVersion: 13
+      MasterUsername: !Ref DBAdminName
+      MasterUserPassword: !Ref DBPassword
+      MaxAllocatedStorage: "20"

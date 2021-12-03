@@ -1,0 +1,216 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Creating networking environment"
+
+Resources:
+  #network resources
+  airflowVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      Tags:
+      - Key: name
+        Value: airflow
+
+  airflowPublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: airflowVPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: "us-east-1a"
+      Tags: 
+      - Key: name
+        Value: airflow
+  
+  airflowInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: name
+        Value: airflow
+
+  airflowAttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId:
+        Ref: airflowVPC
+      InternetGatewayId:
+        Ref: airflowInternetGateway
+  
+  airflowPublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: airflowVPC
+      Tags:
+      - Key: name
+        Value: airflow
+
+  airflowPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: airflowPublicRouteTable
+    Properties:
+      RouteTableId:
+        Ref: airflowPublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: airflowInternetGateway
+  
+  airflowPublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: 
+        Ref: airflowPublicSubnet
+      RouteTableId:
+        Ref: airflowPublicRouteTable
+  
+  airflowNATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId:
+         Fn::GetAtt:
+         - aiflowNATGatewayEIP
+         - AllocationId
+      SubnetId:
+         Ref: airflowPublicSubnet
+      Tags:
+      - Key: name
+        Value: airflow
+
+  aiflowNATGatewayEIP:
+    DependsOn: airflowAttachGateway
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  airflowPrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: airflowVPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: "us-east-1a"
+      Tags: 
+      - Key: name
+        Value: airflow
+
+  airflowPrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: airflowVPC
+      Tags:
+      - Key: name
+        Value: airflow
+  
+  airflowPrivateRoute:
+    Type: AWS::EC2::Route
+    DependsOn: airflowPrivateRouteTable
+    Properties:
+      RouteTableId:
+        Ref: airflowPrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: airflowNATGateway
+  
+  airflowPrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: 
+        Ref: airflowPrivateSubnet
+      RouteTableId:
+        Ref: airflowPrivateRouteTable
+
+  #security groups
+  # bastionSG:
+  #   Type: AWS::EC2::SecurityGroup
+  #   Properties:
+  #     GroupName: bastionSG
+  #     GroupDescription: Allow ssh to bastion host
+  #     VpcId:
+  #       Ref: airflowVPC
+  #     SecurityGroupIngress:
+  #     - IpProtocol: tcp
+  #       FromPort: 22
+  #       ToPort: 22
+  #       CidrIp: 0.0.0.0/0
+  #     SecurityGroupEgress:
+  #     - IpProtocol: tcp
+  #       FromPort: 22
+  #       ToPort: 22
+  #       CidrIp: 0.0.0.0/0
+
+  airflowInstanceSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: airflowInstanceSG
+      GroupDescription: Allow ssh and http to airflow host
+      VpcId:
+        Ref: airflowVPC
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 8080
+        ToPort: 8080
+        CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+      - IpProtocol: tcp
+        FromPort: 8080
+        ToPort: 8080
+        CidrIp: 0.0.0.0/0
+  
+  databaseSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: databaseSG
+      GroupDescription: Allow postgres traffic to database instance
+      VpcId:
+        Ref: airflowVPC
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 5432
+        ToPort: 5432
+        CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+      - IpProtocol: tcp
+        FromPort: 5432
+        ToPort: 5432
+        CidrIp: 0.0.0.0/0
+
+Outputs:
+  outputVPC:
+    Description: Airflow VPC ID
+    Value: !Ref airflowVPC
+    Export:
+      Name: !Sub "${AWS::StackName}-VpcID"
+  
+  outputPublicSubnet:
+    Description: Airflow Public Subnet ID 
+    Value: !Ref airflowPublicSubnet
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicSubnetID"
+  
+  outputPrivateSubnet:
+    Description: Airflow Private Subnet ID 
+    Value: !Ref airflowPrivateSubnet
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSubnetID"
+  
+  # outputBastionSG:
+  #   Description: Bastion Security Group ID 
+  #   Value: !Ref bastionSG
+  #   Export:
+  #     Name: !Sub "${AWS::StackName}-BastionSGID"
+  
+  outputAirflowInstanceSG:
+    Description: Airflow Instance Security Group ID 
+    Value: !Ref airflowInstanceSG
+    Export:
+      Name: !Sub "${AWS::StackName}-AirflowInstanceSGID"
+  
+  outputDatabaseSG:
+    Description: Database Instance Security Group ID 
+    Value: !Ref databaseSG
+    Export:
+      Name: !Sub "${AWS::StackName}-DatabaseSGID"
