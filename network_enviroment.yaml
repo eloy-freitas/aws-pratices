@@ -36,6 +36,8 @@ Parameters:
     Description: Private Subnet B AZ
 
 Resources:
+
+  #network resources definition
   VPC:
     Type: AWS::EC2::VPC
     Properties:
@@ -178,6 +180,77 @@ Resources:
       RouteTableId:
         Ref: PrivateRouteTable
 
+  #security groups definition
+  AirflowSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: Allow trafic from VPN users 
+      GroupName: AirflowSG
+      VpcId:
+        Ref: VPC
+
+  AirflowSGInboundRule1: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt AirflowSG.GroupId
+      IpProtocol: tcp
+      FromPort: 8080
+      ToPort: 8080
+      CidrIp: 0.0.0.0/0
+  
+  AirflowSGOutboundRule1:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties: 
+      GroupId: !GetAtt AirflowSG.GroupId
+      IpProtocol: tcp
+      FromPort: 8080
+      ToPort: 8080
+      CidrIp: 0.0.0.0/0
+
+  DatabaseSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: Allow trafic from Power BI gateway, Airflow instance and VPN users 
+      GroupName: DatabaseSG
+      VpcId:
+        Ref: VPC
+  
+  DatabaseSGInboundRule1: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt DatabaseSG.GroupId
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      SourceSecurityGroupId: AirflowSG
+  
+  DatabaseSGInboundRule2: 
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt DatabaseSG.GroupId
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      SourceSecurityGroupId: PowerBISG
+  
+  DatabaseSGOutboundRule1:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties: 
+      GroupId: !GetAtt DatabaseSG.GroupId
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      SourceSecurityGroupId: AirflowSG
+  
+  DatabaseSGOutboundRule2:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties: 
+      GroupId: !GetAtt DatabaseSG.GroupId
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      SourceSecurityGroupId: PowerBISG
+
 Outputs:
   OutputVPC:
     Description: PC ID
@@ -202,3 +275,15 @@ Outputs:
     Value: !Ref PrivateSubnetB
     Export:
       Name: !Sub "${AWS::StackName}-PrivateSubnetBID"
+
+  OutputDatabaseSG:
+    Description: Database security group ID 
+    Value: !Ref DatabaseSG
+    Export:
+      Name: !Sub "${AWS::StackName}-DatabaseSGID"
+  
+  OutputAirflowSG:
+    Description: Database security group ID 
+    Value: !Ref AirflowSG
+    Export:
+      Name: !Sub "${AWS::StackName}-AirflowSGid"
