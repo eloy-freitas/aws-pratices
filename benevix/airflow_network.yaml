@@ -1,0 +1,401 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Creating networking environment"
+
+Parameters:
+  ParamTag:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - hmg
+      - pro
+    Description: VPC CIDR Block
+
+  ParamPublicSubnetAZ:
+    Type: String
+    Default: 'us-east-1a'
+    AllowedValues:
+      - 'us-east-1a'
+      - 'us-east-1b'
+    Description: Public Subnet AZ
+
+  ParamPrivateASubnetAZ:
+    Type: String
+    Default: 'us-east-1a'
+    AllowedValues:
+      - 'us-east-1a'
+      - 'us-east-1b'
+    Description: Private Subnet A AZ
+
+  ParamPrivateBSubnetAZ:
+    Type: String
+    Default: 'us-east-1b'
+    AllowedValues:
+      - 'us-east-1a'
+      - 'us-east-1b'
+    Description: Private Subnet B AZ
+  
+Resources:
+  #
+  # NETWORK RESOURCES 
+  #
+
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      Tags:
+      - Key: env
+        Value: !Ref ParamTag 
+  
+  #
+  # SUBNETS
+  #
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: 
+        Ref: VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: 
+        Ref: ParamPublicSubnetAZ
+      Tags: 
+      - Key: env
+        Value: !Ref ParamTag
+  
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: 
+        Ref: VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: 
+        Ref: ParamPrivateASubnetAZ
+      Tags: 
+      - Key: env
+        Value: !Ref ParamTag
+  
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: 
+        Ref: VPC
+      CidrBlock: 10.0.3.0/24
+      AvailabilityZone: 
+        Ref: ParamPrivateASubnetAZ
+      Tags: 
+      - Key: env
+        Value: !Ref ParamTag
+
+  #
+  # GATEWAYS
+  #
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: env
+        Value: !Ref ParamTag
+  
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId:
+        Ref: VPC
+      InternetGatewayId:
+        Ref: InternetGateway
+  
+  # NATGatewayEIP:
+  #   DependsOn: AttachGateway
+  #   Type: AWS::EC2::EIP
+  #   Properties:
+  #     Domain: vpc
+
+  # NATGateway:
+  #   Type: AWS::EC2::NatGateway
+  #   Properties:
+  #     AllocationId:
+  #        Fn::GetAtt:
+  #        - NATGatewayEIP
+  #        - AllocationId
+  #     SubnetId:
+  #        Ref: PublicSubnet
+  #     Tags:
+  #     - Key: env
+  #       Value: !Ref ParamTag
+
+  #
+  # ROUTE TABLES
+  #
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: 
+        Ref: VPC
+  
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: 
+        Ref: PublicSubnet
+      RouteTableId:
+        Ref: PublicRouteTable
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: PublicRouteTable
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: InternetGateway
+  
+  # PrivateRouteTable:
+  #   Type: AWS::EC2::RouteTable
+  #   Properties:
+  #     VpcId: 
+  #       Ref: VPC
+  
+  # PrivateRoute:
+  #   Type: AWS::EC2::Route
+  #   DependsOn: PrivateRouteTable
+  #   Properties:
+  #     RouteTableId:
+  #       Ref: PrivateRouteTable
+  #     DestinationCidrBlock: 0.0.0.0/0
+  #     NatGatewayId:
+  #       Ref: NATGateway
+  
+  # PrivateSubnetARouteTableAssociation:
+  #   Type: AWS::EC2::SubnetRouteTableAssociation
+  #   Properties:
+  #     SubnetId: 
+  #       Ref: PrivateSubnetA
+  #     RouteTableId:
+  #       Ref: PrivateRouteTable
+  
+  # PrivateSubnetBRouteTableAssociation:
+  #   Type: AWS::EC2::SubnetRouteTableAssociation
+  #   Properties:
+  #     SubnetId: 
+  #       Ref: PrivateSubnetB
+  #     RouteTableId:
+  #       Ref: PrivateRouteTable
+  
+  #
+  # SECURITY GROUPS
+  #
+
+  AgentDeploySG:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: Agent Deploy SG
+      VpcId: 
+        Ref: VPC
+  
+  DataWarehouseSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: Data Warehouse security group SG
+      VpcId: 
+        Ref: VPC
+
+  PowerBiSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: Power Bi Gateway SG
+      VpcId: 
+        Ref: VPC
+  
+  NetworkFileSystemSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: EFS SG
+      VpcId: 
+        Ref: VPC
+  #
+  # SECURITY GROUP RULES
+  #
+
+  #
+  # INGRESS RULES
+  #
+
+  NetworkFileSystemSGIngressAgentDeploySG:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      SourceSecurityGroupId: !GetAtt AgentDeploySG.GroupId
+      Description: EFS AgentDeploySG Ingress Rule
+      FromPort: 2049
+      GroupId: !GetAtt NetworkFileSystemSG.GroupId
+      IpProtocol: tcp
+      ToPort: 2049 
+
+  AgentDeploySGIngress443:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      CidrIp: 0.0.0.0/0
+      Description: Agent Deploy 443 Ingress Rule
+      FromPort: 443
+      GroupId: !GetAtt AgentDeploySG.GroupId
+      IpProtocol: tcp
+      ToPort: 443
+  
+  DataWarehouseSGIngress5432:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      SourceSecurityGroupId: !GetAtt PowerBiSG.GroupId
+      Description: Data Warehouse 5432 (Postgres port) Ingress Rule
+      FromPort: 5432
+      GroupId: !GetAtt DataWarehouseSG.GroupId
+      IpProtocol: tcp
+      ToPort: 5432
+  
+  PowerBiIngress5432:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      SourceSecurityGroupId: !GetAtt DataWarehouseSG.GroupId
+      Description: Power BI Gateway 5432 Ingress Rule
+      FromPort: 5432
+      GroupId: !GetAtt PowerBiSG.GroupId
+      IpProtocol: tcp
+      ToPort: 5432
+
+  #
+  # EGRESS RULES
+  #
+
+  DataWarehouseSGEgress5432:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties: 
+      DestinationSecurityGroupId: !GetAtt PowerBiSG.GroupId
+      Description: Data Warehouse 5432 (Postgres port) Egress Rule
+      FromPort: 5432
+      GroupId: !GetAtt DataWarehouseSG.GroupId
+      IpProtocol: tcp
+      ToPort: 5432
+  
+  NetworkFileSystemSGEgressAgentDeploySG:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties: 
+      DestinationSecurityGroupId: !GetAtt AgentDeploySG.GroupId
+      Description: EFS AgentDeploySG Egress Rule
+      FromPort: 2049
+      GroupId: !GetAtt NetworkFileSystemSG.GroupId
+      IpProtocol: tcp
+      ToPort: 2049
+
+  PowerBiEgress443:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties: 
+      CidrIp: 0.0.0.0/0
+      Description: Power BI Gateway 443 Eress Rule
+      FromPort: 443
+      GroupId: !GetAtt PowerBiSG.GroupId
+      IpProtocol: tcp
+      ToPort: 443
+  
+  PowerBiEgress5671:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties: 
+      CidrIp: 0.0.0.0/0
+      Description: Power BI Gateway 5671 Egress Rule
+      FromPort: 5671
+      GroupId: !GetAtt PowerBiSG.GroupId
+      IpProtocol: tcp
+      ToPort: 5671
+  
+  PowerBiEgress5672:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties: 
+      CidrIp: 0.0.0.0/0
+      Description: Power BI Gateway 5672 Egress Rule
+      FromPort: 5672
+      GroupId: !GetAtt PowerBiSG.GroupId
+      IpProtocol: tcp
+      ToPort: 5672
+  
+  PowerBiEgress9350:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties: 
+      CidrIp: 0.0.0.0/0
+      Description: Power BI Gateway 9350 Egress Rule
+      FromPort: 9350
+      GroupId: !GetAtt PowerBiSG.GroupId
+      IpProtocol: tcp
+      ToPort: 9350
+  
+  PowerBiEgress9354:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties: 
+      CidrIp: 0.0.0.0/0
+      Description: Power BI Gateway 9354 Egress Rule
+      FromPort: 9354
+      GroupId: !GetAtt PowerBiSG.GroupId
+      IpProtocol: tcp
+      ToPort: 9354
+  
+  PowerBiEgress5432:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties: 
+      DestinationSecurityGroupId: !GetAtt DataWarehouseSG.GroupId
+      Description: Power BI Gateway 5432 (Postgres) Egress Rule
+      FromPort: 5432
+      GroupId: !GetAtt PowerBiSG.GroupId
+      IpProtocol: tcp
+      ToPort: 5432
+
+Outputs:
+  outputVPC:
+    Description: Airflow VPC ID
+    Value: !Ref VPC
+    Export:
+      Name: !Sub "${AWS::StackName}-VpcID"
+  
+  outputPublicSubnet:
+    Description: Airflow Public Subnet ID 
+    Value: !Ref PublicSubnet
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicSubnetID"
+  
+  outputPrivateSubnetA:
+    Description: Airflow Private Subnet ID 
+    Value: !Ref PrivateSubnetA
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSubnetAID"
+  
+  outputPrivateSubnetB:
+    Description: Airflow Private Subnet ID 
+    Value: !Ref PrivateSubnetB
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSubnetBID"
+  
+  outputAgentDeploySG:
+    Description: Agente Deploy security group
+    Value: !Ref AgentDeploySG
+    Export:
+      Name: !Sub "${AWS::StackName}-AgentDeploySGID"
+  
+  outputPowerBiSG:
+    Description: Power BI Gateway security group
+    Value: !Ref PowerBiSG
+    Export:
+      Name: !Sub "${AWS::StackName}-PowerBiSGID"
+
+  outputDataWarehouseSG:
+    Description: Data Warehouse security group
+    Value: !Ref DataWarehouseSG
+    Export:
+      Name: !Sub "${AWS::StackName}-DataWarehouseSGID"
+  
+  outputNetworkFileSystemSG:
+    Description: EFS security group
+    Value: !Ref NetworkFileSystemSG
+    Export:
+      Name: !Sub "${AWS::StackName}-NetworkFileSystemSGID"
