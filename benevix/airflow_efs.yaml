@@ -1,0 +1,39 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Creating network file system"
+
+Parameters:
+  BenevixNetworkStack:
+    Type: String
+    Default: BenevixNetwork
+
+Resources:
+  ElasticFileSystem:
+    Type: AWS::EFS::FileSystem
+    Properties: 
+      BackupPolicy: 
+        Status: DISABLED
+      Encrypted: false
+      PerformanceMode: generalPurpose
+
+  MountTargetA: 
+    Type: AWS::EFS::MountTarget
+    Properties: 
+      FileSystemId: 
+        Ref: ElasticFileSystem
+      SubnetId: !ImportValue
+        'Fn::Sub': "${BenevixNetworkStack}-PrivateSubnetAID"
+      SecurityGroups: 
+        - !ImportValue 
+          'Fn::Sub': "${BenevixNetworkStack}-NetworkFileSystemSGID"
+          
+  MountTargetB: 
+    Type: AWS::EFS::MountTarget
+    DependsOn: MountTargetA
+    Properties: 
+      FileSystemId: 
+        Ref: ElasticFileSystem
+      SubnetId: !ImportValue
+        'Fn::Sub': "${BenevixNetworkStack}-PrivateSubnetBID"
+      SecurityGroups: 
+        - !ImportValue 
+          'Fn::Sub': "${BenevixNetworkStack}-NetworkFileSystemSGID"
