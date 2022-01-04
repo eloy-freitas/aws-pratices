@@ -10,30 +10,6 @@ Parameters:
       - hmg
       - pro
     Description: VPC CIDR Block
-
-  ParamPublicSubnetAZ:
-    Type: String
-    Default: 'us-east-1a'
-    AllowedValues:
-      - 'us-east-1a'
-      - 'us-east-1b'
-    Description: Public Subnet AZ
-
-  ParamPrivateASubnetAZ:
-    Type: String
-    Default: 'us-east-1a'
-    AllowedValues:
-      - 'us-east-1a'
-      - 'us-east-1b'
-    Description: Private Subnet A AZ
-
-  ParamPrivateBSubnetAZ:
-    Type: String
-    Default: 'us-east-1b'
-    AllowedValues:
-      - 'us-east-1a'
-      - 'us-east-1b'
-    Description: Private Subnet B AZ
   
 Resources:
   #
@@ -60,8 +36,7 @@ Resources:
       VpcId: 
         Ref: VPC
       CidrBlock: 10.0.1.0/24
-      AvailabilityZone: 
-        Ref: ParamPublicSubnetAZ
+      AvailabilityZone: 'us-east-1a'
       Tags: 
       - Key: env
         Value: !Ref ParamTag
@@ -72,8 +47,7 @@ Resources:
       VpcId: 
         Ref: VPC
       CidrBlock: 10.0.2.0/24
-      AvailabilityZone: 
-        Ref: ParamPrivateASubnetAZ
+      AvailabilityZone: 'us-east-1a'
       Tags: 
       - Key: env
         Value: !Ref ParamTag
@@ -84,8 +58,7 @@ Resources:
       VpcId: 
         Ref: VPC
       CidrBlock: 10.0.3.0/24
-      AvailabilityZone: 
-        Ref: ParamPrivateASubnetAZ
+      AvailabilityZone: 'us-east-1b'
       Tags: 
       - Key: env
         Value: !Ref ParamTag
@@ -148,7 +121,9 @@ Resources:
 
   PublicRoute:
     Type: AWS::EC2::Route
-    DependsOn: PublicRouteTable
+    DependsOn: 
+      - PublicRouteTable
+      - AttachGateway
     Properties:
       RouteTableId:
         Ref: PublicRouteTable
@@ -365,13 +340,13 @@ Outputs:
       Name: !Sub "${AWS::StackName}-PublicSubnetID"
   
   outputPrivateSubnetA:
-    Description: Airflow Private Subnet ID 
+    Description: Airflow Private Subnet A ID 
     Value: !Ref PrivateSubnetA
     Export:
       Name: !Sub "${AWS::StackName}-PrivateSubnetAID"
   
   outputPrivateSubnetB:
-    Description: Airflow Private Subnet ID 
+    Description: Airflow Private Subnet B ID 
     Value: !Ref PrivateSubnetB
     Export:
       Name: !Sub "${AWS::StackName}-PrivateSubnetBID"
