@@ -37,3 +37,22 @@ Resources:
       SecurityGroups: 
         - !ImportValue 
           'Fn::Sub': "${BenevixNetworkStack}-NetworkFileSystemSGID"
+
+Outputs:
+  outputElasticFileSystem:
+    Description: Elastic File System ID
+    Value: !Ref ElasticFileSystem
+    Export:
+      Name: !Sub "${AWS::StackName}-ElasticFileSystemID"
+
+  outputMountTargetA:
+    Description: EFS Mount Target A
+    Value: !Ref MountTargetA
+    Export:
+      Name: !Sub "${AWS::StackName}-MountTargetAID"
+
+  outputMountTargetB:
+    Description: EFS Mount Target B
+    Value: !Ref MountTargetB
+    Export:
+      Name: !Sub "${AWS::StackName}-MountTargetBID"

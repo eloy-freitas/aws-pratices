@@ -82,24 +82,24 @@ Resources:
       InternetGatewayId:
         Ref: InternetGateway
   
-  # NATGatewayEIP:
-  #   DependsOn: AttachGateway
-  #   Type: AWS::EC2::EIP
-  #   Properties:
-  #     Domain: vpc
+  NATGatewayEIP:
+    DependsOn: AttachGateway
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
 
-  # NATGateway:
-  #   Type: AWS::EC2::NatGateway
-  #   Properties:
-  #     AllocationId:
-  #        Fn::GetAtt:
-  #        - NATGatewayEIP
-  #        - AllocationId
-  #     SubnetId:
-  #        Ref: PublicSubnet
-  #     Tags:
-  #     - Key: env
-  #       Value: !Ref ParamTag
+  NATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId:
+         Fn::GetAtt:
+         - NATGatewayEIP
+         - AllocationId
+      SubnetId:
+         Ref: PublicSubnet
+      Tags:
+      - Key: env
+        Value: !Ref ParamTag
 
   #
   # ROUTE TABLES
@@ -131,37 +131,37 @@ Resources:
       GatewayId:
         Ref: InternetGateway
   
-  # PrivateRouteTable:
-  #   Type: AWS::EC2::RouteTable
-  #   Properties:
-  #     VpcId: 
-  #       Ref: VPC
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: 
+        Ref: VPC
   
-  # PrivateRoute:
-  #   Type: AWS::EC2::Route
-  #   DependsOn: PrivateRouteTable
-  #   Properties:
-  #     RouteTableId:
-  #       Ref: PrivateRouteTable
-  #     DestinationCidrBlock: 0.0.0.0/0
-  #     NatGatewayId:
-  #       Ref: NATGateway
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    DependsOn: PrivateRouteTable
+    Properties:
+      RouteTableId:
+        Ref: PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: NATGateway
   
-  # PrivateSubnetARouteTableAssociation:
-  #   Type: AWS::EC2::SubnetRouteTableAssociation
-  #   Properties:
-  #     SubnetId: 
-  #       Ref: PrivateSubnetA
-  #     RouteTableId:
-  #       Ref: PrivateRouteTable
+  PrivateSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: 
+        Ref: PrivateSubnetA
+      RouteTableId:
+        Ref: PrivateRouteTable
   
-  # PrivateSubnetBRouteTableAssociation:
-  #   Type: AWS::EC2::SubnetRouteTableAssociation
-  #   Properties:
-  #     SubnetId: 
-  #       Ref: PrivateSubnetB
-  #     RouteTableId:
-  #       Ref: PrivateRouteTable
+  PrivateSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: 
+        Ref: PrivateSubnetB
+      RouteTableId:
+        Ref: PrivateRouteTable
   
   #
   # SECURITY GROUPS
@@ -194,6 +194,13 @@ Resources:
       GroupDescription: EFS SG
       VpcId: 
         Ref: VPC
+  
+  BastionSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: Bastion Host SG
+      VpcId: 
+        Ref: VPC
   #
   # SECURITY GROUP RULES
   #
@@ -201,6 +208,45 @@ Resources:
   #
   # INGRESS RULES
   #
+  AgentDeploySGIngress80:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      CidrIp: 0.0.0.0/0
+      Description: Agent Deploy 80 Ingress Rule
+      FromPort: 80
+      GroupId: !GetAtt AgentDeploySG.GroupId
+      IpProtocol: tcp
+      ToPort: 80
+  
+  AgentDeploySGIngressNetworkFileSystemSG:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      SourceSecurityGroupId: !GetAtt NetworkFileSystemSG.GroupId
+      Description: AgentDeploySG Ingress Rule to NetworkFileSystemSG
+      FromPort: 2049
+      GroupId: !GetAtt AgentDeploySG.GroupId
+      IpProtocol: tcp
+      ToPort: 2049 
+
+  BastionSGIngressAgentDeploySG:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      SourceSecurityGroupId: !GetAtt BastionSG.GroupId
+      Description: Bastion Host Ingress Rule to Agent Deploy
+      FromPort: 22
+      GroupId: !GetAtt AgentDeploySG.GroupId
+      IpProtocol: tcp
+      ToPort: 22 
+
+  BastionSGIngress22:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      CidrIp: 0.0.0.0/0
+      Description: Bastion Host 22 Ingress Rule
+      FromPort: 22
+      GroupId: !GetAtt BastionSG.GroupId
+      IpProtocol: tcp
+      ToPort: 22
 
   NetworkFileSystemSGIngressAgentDeploySG:
     Type: AWS::EC2::SecurityGroupIngress
@@ -245,6 +291,55 @@ Resources:
   #
   # EGRESS RULES
   #
+  AgentDeploySGEgress443:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties: 
+      CidrIp: 0.0.0.0/0
+      Description: AgentDeploySG Egress 443 Rule 
+      FromPort: 443
+      GroupId: !GetAtt AgentDeploySG.GroupId
+      IpProtocol: tcp
+      ToPort: 443
+  
+  AgentDeploySGEgressNetworkFileSystemSG:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties: 
+      DestinationSecurityGroupId: !GetAtt NetworkFileSystemSG.GroupId
+      Description: AgentDeploySG Egress Rule to NetworkFileSystemSG
+      FromPort: 2049
+      GroupId: !GetAtt AgentDeploySG.GroupId
+      IpProtocol: tcp
+      ToPort: 2049
+
+  BastionSGEgress22:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties: 
+      CidrIp: 0.0.0.0/0
+      Description: Bastion Host 22 Egress Rule
+      FromPort: 22
+      GroupId: !GetAtt BastionSG.GroupId
+      IpProtocol: tcp
+      ToPort: 22
+
+  AgentDeploySGEgressBastionSG:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties: 
+      DestinationSecurityGroupId: !GetAtt BastionSG.GroupId
+      Description: AgentDeploySG Egress 22 Rule to BastionSG
+      FromPort: 22
+      GroupId: !GetAtt AgentDeploySG.GroupId
+      IpProtocol: tcp
+      ToPort: 22
+
+  AgentDeploySGEgress80:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties: 
+      CidrIp: 0.0.0.0/0
+      Description: AgentDeploySG Egress 80 Rule 
+      FromPort: 80
+      GroupId: !GetAtt AgentDeploySG.GroupId
+      IpProtocol: tcp
+      ToPort: 80
 
   DataWarehouseSGEgress5432:
     Type: AWS::EC2::SecurityGroupEgress

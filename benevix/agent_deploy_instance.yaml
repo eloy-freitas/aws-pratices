@@ -1,0 +1,47 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Creating agent deploy instance"
+
+Parameters:
+  BenevixNetworkStack:
+    Type: String
+    Default: BenevixNetwork
+  
+  BenevixEFSStack:
+    Type: String
+    Default: BenevixEFS
+
+Resources:
+  
+  AgentDeploy: 
+    Type: AWS::EC2::Instance
+    Properties: 
+      AvailabilityZone: 'us-east-1a'
+      DisableApiTermination: false
+      ImageId: ami-0ed9277fb7eb570c9
+      InstanceType: t2.micro
+      KeyName: agent_deploy
+      IamInstanceProfile: AgenteDeployRole
+      Monitoring: "true"
+      SubnetId: 
+        !ImportValue 
+        'Fn::Sub': "${BenevixNetworkStack}-PrivateSubnetAID"
+      SecurityGroupIds:
+        - !ImportValue 
+          'Fn::Sub': "${BenevixNetworkStack}-AgentDeploySGID"
+      UserData: 
+        Fn::Base64:
+          Fn::Join:
+          - "\n"
+          - - "#cloud-boothook"
+            - "#!/bin/bash -xe"
+            - sudo yum update -y
+            - sudo yum -y install nfs-utils
+            - mkdir ~/efs-mount-point
+            - Fn::Join:
+              - ''
+              - - 'sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 '
+                - Fn::ImportValue: !Sub "${BenevixEFSStack}-ElasticFileSystemID"
+                - '.efs.us-east-1.amazonaws.com:/ '
+                - '~/efs-mount-point'
+            - echo oi > ~/efs-mount-point/teste.txt
+          
