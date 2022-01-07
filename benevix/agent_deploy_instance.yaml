@@ -45,6 +45,16 @@ Resources:
               - chmod 400 /home/ec2-user/.ssh/azure_ssh
               - eval $(ssh-agent)
               - ssh-add /home/ec2-user/.ssh/azure_ssh
+              - mkdir -p /home/ec2-user/azagent
+              - cd /home/ec2-user/azagent
+              - curl -fkSL  https://vstsagentpackage.azureedge.net/agent/2.195.2/vsts-agent-linux-x64-2.195.2.tar.gz --output /home/ec2-user/azagent/vstsagent.tar.gz
+              - tar -zxvf /home/ec2-user/azagent/vstsagent.tar.gz
+              - if [ -x "$(command -v systemctl)" ]; 
+              - then ./config.sh --deploymentgroup --deploymentgroupname "test" --acceptteeeula --agent $HOSTNAME --url https://dev.azure.com/itixti/ --work _work --projectname 'BI ITIX' --runasservice
+              - sudo ./svc.sh install
+              - sudo ./svc.sh start
+              - else ./config.sh --deploymentgroup --deploymentgroupname "test" --acceptteeeula --agent $HOSTNAME --url https://dev.azure.com/itixti/ --work _work --projectname 'BI ITIX'
+              - ./run.sh; fi
             - EfsId: 
                 Fn::ImportValue: 
                   !Sub "${EfsStack}-ElasticFileSystemID"
