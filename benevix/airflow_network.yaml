@@ -469,3 +469,9 @@ Outputs:
     Value: !Ref NetworkFileSystemSG
     Export:
       Name: !Sub "${AWS::StackName}-NetworkFileSystemSGID"
+  
+  outputBastionSG:
+    Description: Bastion security group
+    Value: !Ref BastionSG
+    Export:
+      Name: !Sub "${AWS::StackName}-BastionSGID"

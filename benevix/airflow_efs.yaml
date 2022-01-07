@@ -2,9 +2,9 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: "Creating network file system"
 
 Parameters:
-  BenevixNetworkStack:
+  NetworkStack:
     Type: String
-    Default: BenevixNetwork
+    Default: NetworkStack
 
 Resources:
   ElasticFileSystem:
@@ -21,10 +21,10 @@ Resources:
       FileSystemId: 
         Ref: ElasticFileSystem
       SubnetId: !ImportValue
-        'Fn::Sub': "${BenevixNetworkStack}-PrivateSubnetAID"
+        'Fn::Sub': "${NetworkStack}-PrivateSubnetAID"
       SecurityGroups: 
         - !ImportValue 
-          'Fn::Sub': "${BenevixNetworkStack}-NetworkFileSystemSGID"
+          'Fn::Sub': "${NetworkStack}-NetworkFileSystemSGID"
           
   MountTargetB: 
     Type: AWS::EFS::MountTarget
@@ -33,10 +33,10 @@ Resources:
       FileSystemId: 
         Ref: ElasticFileSystem
       SubnetId: !ImportValue
-        'Fn::Sub': "${BenevixNetworkStack}-PrivateSubnetBID"
+        'Fn::Sub': "${NetworkStack}-PrivateSubnetBID"
       SecurityGroups: 
         - !ImportValue 
-          'Fn::Sub': "${BenevixNetworkStack}-NetworkFileSystemSGID"
+          'Fn::Sub': "${NetworkStack}-NetworkFileSystemSGID"
 
 Outputs:
   outputElasticFileSystem:

@@ -2,13 +2,13 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: "Creating agent deploy instance"
 
 Parameters:
-  BenevixNetworkStack:
+  NetworkStack:
     Type: String
-    Default: BenevixNetwork
+    Default: NetworkStack
   
-  BenevixEFSStack:
+  EfsStack:
     Type: String
-    Default: BenevixEFS
+    Default: EfsStack
 
 Resources:
   
@@ -24,24 +24,27 @@ Resources:
       Monitoring: "true"
       SubnetId: 
         !ImportValue 
-        'Fn::Sub': "${BenevixNetworkStack}-PrivateSubnetAID"
+        'Fn::Sub': "${NetworkStack}-PrivateSubnetAID"
       SecurityGroupIds:
         - !ImportValue 
-          'Fn::Sub': "${BenevixNetworkStack}-AgentDeploySGID"
+          'Fn::Sub': "${NetworkStack}-AgentDeploySGID"
       UserData: 
-        Fn::Base64:
-          Fn::Join:
-          - "\n"
-          - - "#cloud-boothook"
-            - "#!/bin/bash -xe"
-            - sudo yum update -y
-            - sudo yum -y install nfs-utils
-            - mkdir ~/efs-mount-point
-            - Fn::Join:
-              - ''
-              - - 'sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 '
-                - Fn::ImportValue: !Sub "${BenevixEFSStack}-ElasticFileSystemID"
-                - '.efs.us-east-1.amazonaws.com:/ '
-                - '~/efs-mount-point'
-            - echo oi > ~/efs-mount-point/teste.txt
-          
+        Fn::Base64: 
+          Fn::Sub: 
+            - |
+              #cloud-config
+              runcmd:
+              - sudo yum update
+              - sudo yum -y install nfs-utils
+              - sudo mkdir -p /mnt/efs/
+              - sudo chown -R ec2-user:ec2-user /mnt/efs/
+              - sudo mount -t nfs -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport ${EfsId}.efs.${AWS::Region}.amazonaws.com:/ /mnt/efs/
+              - sudo echo "${EfsId}.efs.${AWS::Region}.amazonaws.com:/ /mnt/efs/ nfs defaults,_netdev 0 0" >> /etc/fstab 
+              - echo ${SshKey} > /home/ec2-user/.ssh/azure_ssh
+              - eval $(ssh-agent)
+              - ssh-add /home/ec2-user/.ssh/azure_ssh
+            - EfsId: 
+                Fn::ImportValue: 
+                  !Sub "${EfsStack}-ElasticFileSystemID"
+              SshKey: '{{resolve:ssm:private_ssh:1}}'
+                  

@@ -1,0 +1,26 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Creating bastion host instance"
+
+Parameters:
+  NetworkStack:
+    Type: String
+    Default: NetworkStack
+
+Resources:
+  
+  Bastion: 
+    Type: AWS::EC2::Instance
+    Properties: 
+      AvailabilityZone: 'us-east-1a'
+      DisableApiTermination: false
+      ImageId: ami-0ed9277fb7eb570c9
+      InstanceType: t2.micro
+      KeyName: bastion
+      IamInstanceProfile: BastionHostRole
+      Monitoring: "true"
+      SubnetId: 
+        !ImportValue 
+        'Fn::Sub': "${NetworkStack}-PublicSubnetID"
+      SecurityGroupIds:
+        - !ImportValue 
+          'Fn::Sub': "${NetworkStack}-BastionSGID"
