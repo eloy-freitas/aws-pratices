@@ -17,6 +17,10 @@ Parameters:
   ProjectName:
     Type: String
     Default: BI ITIX
+  
+  RepoUrl:
+    Type: String
+    Default: git@ssh.dev.azure.com:v3/itixti/BI%20ITIX/TESTE
 
 Resources:
   
@@ -60,13 +64,19 @@ Resources:
               - sudo yum -y install nfs-utils
               - sudo mkdir -p /home/ec2-user/efs/
               - sudo mount -t nfs -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport ${EfsId}.efs.${AWS::Region}.amazonaws.com:/ /home/ec2-user/efs/
-              - sudo chown -R ec2-user:ec2-user /home/ec2-user/efs/
               - sudo echo "${EfsId}.efs.${AWS::Region}.amazonaws.com:/ /home/ec2-user/efs/ nfs defaults,_netdev 0 0" >> /etc/fstab 
               - SshKey=$(aws --region=${AWS::Region} ssm get-parameter --name "private_ssh" --output text --query Parameter.Value)
               - echo $SshKey > /home/ec2-user/.ssh/azure_ssh
               - chmod 400 /home/ec2-user/.ssh/azure_ssh
-              - eval $(ssh-agent)
+              - sudo chown ec2-user:ec2-user /home/ec2-user/.ssh/azure_ssh
+              - eval `ssh-agent`
               - ssh-add /home/ec2-user/.ssh/azure_ssh
+              - mkdir /home/ec2-user/efs/projeto
+              - sudo yum -y install git
+              - cd /home/ec2-user/efs/projeto
+              - git init
+              - git clone ${RepoUrl}
+              - sudo chown -R ec2-user:ec2-user /home/ec2-user/
             - EfsId: 
                 Fn::ImportValue: 
                   !Sub "${EfsStack}-ElasticFileSystemID"

@@ -208,6 +208,16 @@ Resources:
   #
   # INGRESS RULES
   #
+  AgentDeploySGIngress22:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      CidrIp: 0.0.0.0/0
+      Description: Agent Deploy 22 Ingress Rule
+      FromPort: 22
+      GroupId: !GetAtt AgentDeploySG.GroupId
+      IpProtocol: tcp
+      ToPort: 22
+
   AgentDeploySGIngress80:
     Type: AWS::EC2::SecurityGroupIngress
     Properties: 
@@ -228,15 +238,15 @@ Resources:
       IpProtocol: tcp
       ToPort: 2049 
 
-  BastionSGIngressAgentDeploySG:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties: 
-      SourceSecurityGroupId: !GetAtt BastionSG.GroupId
-      Description: Bastion Host Ingress Rule to Agent Deploy
-      FromPort: 22
-      GroupId: !GetAtt AgentDeploySG.GroupId
-      IpProtocol: tcp
-      ToPort: 22 
+  # BastionSGIngressAgentDeploySG:
+  #   Type: AWS::EC2::SecurityGroupIngress
+  #   Properties: 
+  #     SourceSecurityGroupId: !GetAtt BastionSG.GroupId
+  #     Description: Bastion Host Ingress Rule to Agent Deploy
+  #     FromPort: 22
+  #     GroupId: !GetAtt AgentDeploySG.GroupId
+  #     IpProtocol: tcp
+  #     ToPort: 22 
 
   BastionSGIngress22:
     Type: AWS::EC2::SecurityGroupIngress
@@ -291,6 +301,16 @@ Resources:
   #
   # EGRESS RULES
   #
+  AgentDeploySGEgress22:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties: 
+      CidrIp: 0.0.0.0/0
+      Description: AgentDeploy 22 Egress Rule
+      FromPort: 22
+      GroupId: !GetAtt AgentDeploySG.GroupId
+      IpProtocol: tcp
+      ToPort: 22
+
   AgentDeploySGEgress443:
     Type: AWS::EC2::SecurityGroupEgress
     Properties: 
@@ -321,15 +341,15 @@ Resources:
       IpProtocol: tcp
       ToPort: 22
 
-  AgentDeploySGEgressBastionSG:
-    Type: AWS::EC2::SecurityGroupEgress
-    Properties: 
-      DestinationSecurityGroupId: !GetAtt BastionSG.GroupId
-      Description: AgentDeploySG Egress 22 Rule to BastionSG
-      FromPort: 22
-      GroupId: !GetAtt AgentDeploySG.GroupId
-      IpProtocol: tcp
-      ToPort: 22
+  # AgentDeploySGEgressBastionSG:
+  #   Type: AWS::EC2::SecurityGroupEgress
+  #   Properties: 
+  #     DestinationSecurityGroupId: !GetAtt BastionSG.GroupId
+  #     Description: AgentDeploySG Egress 22 Rule to BastionSG
+  #     FromPort: 22
+  #     GroupId: !GetAtt AgentDeploySG.GroupId
+  #     IpProtocol: tcp
+  #     ToPort: 22
 
   AgentDeploySGEgress80:
     Type: AWS::EC2::SecurityGroupEgress
