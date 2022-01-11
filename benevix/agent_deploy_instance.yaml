@@ -9,6 +9,14 @@ Parameters:
   EfsStack:
     Type: String
     Default: EfsStack
+  
+  DeploymentGroupName:
+    Type: String
+    Default: test
+  
+  ProjectName:
+    Type: String
+    Default: BI ITIX
 
 Resources:
   
@@ -19,7 +27,7 @@ Resources:
       DisableApiTermination: false
       ImageId: ami-0ed9277fb7eb570c9
       InstanceType: t2.micro
-      KeyName: agent_deploy
+      KeyName: agentDeploy
       IamInstanceProfile: AgenteDeployRole
       Monitoring: "true"
       SubnetId: 
@@ -34,7 +42,21 @@ Resources:
             - |
               #cloud-config
               runcmd:
-              - sudo yum update
+              - mkdir -p /home/ec2-user/azagent
+              - curl -fkSL  https://vstsagentpackage.azureedge.net/agent/2.195.2/vsts-agent-linux-x64-2.195.2.tar.gz --output /home/ec2-user/azagent/vstsagent.tar.gz
+              - tar -zxvf /home/ec2-user/azagent/vstsagent.tar.gz -C /home/ec2-user/azagent
+              - sudo chown -R ec2-user:ec2-user /home/ec2-user/azagent
+              - PAT=$(aws --region=${AWS::Region} ssm get-parameter --name "pat_token" --output text --query Parameter.Value)
+              - cd /home/ec2-user/azagent
+              - if [ -x "$(command -v systemctl)" ] 
+              - then 
+              - sudo -u ec2-user ./config.sh --deploymentgroup --deploymentgroupname '${DeploymentGroupName}' --acceptteeeula --agent $HOSTNAME --url https://dev.azure.com/itixti/ --work _work --projectname '${ProjectName}' --auth PAT --token $PAT --runasservice
+              - sudo ./svc.sh install
+              - sudo ./svc.sh start
+              - else 
+              - sudo -u ec2-user ./config.sh --deploymentgroup --deploymentgroupname '${DeploymentGroupName}' --acceptteeeula --agent $HOSTNAME --url https://dev.azure.com/itixti/ --work _work --projectname '${ProjectName}' --auth PAT --token $PAT
+              - sudo -u ec2-user ./run.sh
+              - fi
               - sudo yum -y install nfs-utils
               - sudo mkdir -p /home/ec2-user/efs/
               - sudo mount -t nfs -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport ${EfsId}.efs.${AWS::Region}.amazonaws.com:/ /home/ec2-user/efs/
@@ -45,17 +67,8 @@ Resources:
               - chmod 400 /home/ec2-user/.ssh/azure_ssh
               - eval $(ssh-agent)
               - ssh-add /home/ec2-user/.ssh/azure_ssh
-              - mkdir -p /home/ec2-user/azagent
-              - cd /home/ec2-user/azagent
-              - curl -fkSL  https://vstsagentpackage.azureedge.net/agent/2.195.2/vsts-agent-linux-x64-2.195.2.tar.gz --output /home/ec2-user/azagent/vstsagent.tar.gz
-              - tar -zxvf /home/ec2-user/azagent/vstsagent.tar.gz
-              - if [ -x "$(command -v systemctl)" ]; 
-              - then ./config.sh --deploymentgroup --deploymentgroupname "test" --acceptteeeula --agent $HOSTNAME --url https://dev.azure.com/itixti/ --work _work --projectname 'BI ITIX' --runasservice
-              - sudo ./svc.sh install
-              - sudo ./svc.sh start
-              - else ./config.sh --deploymentgroup --deploymentgroupname "test" --acceptteeeula --agent $HOSTNAME --url https://dev.azure.com/itixti/ --work _work --projectname 'BI ITIX'
-              - ./run.sh; fi
             - EfsId: 
                 Fn::ImportValue: 
                   !Sub "${EfsStack}-ElasticFileSystemID"
                   
+

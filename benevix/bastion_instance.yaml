@@ -18,9 +18,14 @@ Resources:
       KeyName: bastion
       IamInstanceProfile: BastionHostRole
       Monitoring: "true"
-      SubnetId: 
-        !ImportValue 
-        'Fn::Sub': "${NetworkStack}-PublicSubnetID"
-      SecurityGroupIds:
-        - !ImportValue 
-          'Fn::Sub': "${NetworkStack}-BastionSGID"
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeleteOnTermination: true
+          DeviceIndex: "0"
+          GroupSet: 
+            - !ImportValue 
+              'Fn::Sub': "${NetworkStack}-BastionSGID"
+          SubnetId: 
+            !ImportValue 
+            'Fn::Sub': "${NetworkStack}-PublicSubnetID"
+        
