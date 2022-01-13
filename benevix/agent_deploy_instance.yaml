@@ -23,7 +23,12 @@ Parameters:
     Default: git@ssh.dev.azure.com:v3/itixti/BI%20ITIX/TESTE
 
 Resources:
-  
+  # - mkdir /home/ec2-user/efs/projeto
+  # - sudo yum -y install git
+  # - cd /home/ec2-user/efs/projeto
+  # - git init
+  # - git clone ${RepoUrl}
+
   AgentDeploy: 
     Type: AWS::EC2::Instance
     Properties: 
@@ -46,6 +51,10 @@ Resources:
             - |
               #cloud-config
               runcmd:
+              - sudo yum update
+              - sudo yum -y install expect
+              - sudo yum -y install nfs-utils
+              - sudo yum -y install git
               - mkdir -p /home/ec2-user/azagent
               - curl -fkSL  https://vstsagentpackage.azureedge.net/agent/2.195.2/vsts-agent-linux-x64-2.195.2.tar.gz --output /home/ec2-user/azagent/vstsagent.tar.gz
               - tar -zxvf /home/ec2-user/azagent/vstsagent.tar.gz -C /home/ec2-user/azagent
@@ -61,7 +70,6 @@ Resources:
               - sudo -u ec2-user ./config.sh --deploymentgroup --deploymentgroupname '${DeploymentGroupName}' --acceptteeeula --agent $HOSTNAME --url https://dev.azure.com/itixti/ --work _work --projectname '${ProjectName}' --auth PAT --token $PAT
               - sudo -u ec2-user ./run.sh
               - fi
-              - sudo yum -y install nfs-utils
               - sudo mkdir -p /home/ec2-user/efs/
               - sudo mount -t nfs -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport ${EfsId}.efs.${AWS::Region}.amazonaws.com:/ /home/ec2-user/efs/
               - sudo echo "${EfsId}.efs.${AWS::Region}.amazonaws.com:/ /home/ec2-user/efs/ nfs defaults,_netdev 0 0" >> /etc/fstab 
@@ -69,13 +77,19 @@ Resources:
               - echo $SshKey > /home/ec2-user/.ssh/azure_ssh
               - chmod 400 /home/ec2-user/.ssh/azure_ssh
               - sudo chown ec2-user:ec2-user /home/ec2-user/.ssh/azure_ssh
-              - eval `ssh-agent`
-              - ssh-add /home/ec2-user/.ssh/azure_ssh
-              - mkdir /home/ec2-user/efs/projeto
-              - sudo yum -y install git
-              - cd /home/ec2-user/efs/projeto
-              - git init
-              - git clone ${RepoUrl}
+              - eval `ssh-agent -s`
+              - ssh-add -l
+              - PassPhrase=$(aws --region=${AWS::Region} ssm get-parameter --name "passphrase" --output text --query Parameter.Value)
+              - echo $PassPhrase > /home/ec2-user/passphrase
+              - echo "#!/bin/expect -f" >> /home/ec2-user/run_ssh_add.sh
+              - echo "set file [exec cat /home/ec2-user/passphrase]" >> /home/ec2-user/run_ssh_add.sh
+              - echo "spawn ssh-add /home/ec2-user/.ssh/azure_ssh" >> /home/ec2-user/run_ssh_add.sh
+              - echo 'expect "Enter passphrase for /home/ec2-user/.ssh/azure_ssh:"' >> /home/ec2-user/run_ssh_add.sh
+              - echo 'send "$file\\n"' >> /home/ec2-user/run_ssh_add.sh
+              - echo "interact" >> /home/ec2-user/run_ssh_add.sh
+              - sudo chmod +x /home/ec2-user/run_ssh_add.sh
+              - /home/ec2-user/run_ssh_add.sh
+              - ssh-add -l
               - sudo chown -R ec2-user:ec2-user /home/ec2-user/
             - EfsId: 
                 Fn::ImportValue: 
