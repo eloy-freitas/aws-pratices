@@ -85,7 +85,7 @@ Resources:
               - echo "set file [exec cat /home/ec2-user/passphrase]" >> /home/ec2-user/run_ssh_add.sh
               - echo "spawn ssh-add /home/ec2-user/.ssh/azure_ssh" >> /home/ec2-user/run_ssh_add.sh
               - echo 'expect "Enter passphrase for /home/ec2-user/.ssh/azure_ssh:"' >> /home/ec2-user/run_ssh_add.sh
-              - echo 'send "$file\\n"' >> /home/ec2-user/run_ssh_add.sh
+              - echo 'send "$file\n"' >> /home/ec2-user/run_ssh_add.sh
               - echo "interact" >> /home/ec2-user/run_ssh_add.sh
               - sudo chmod +x /home/ec2-user/run_ssh_add.sh
               - /home/ec2-user/run_ssh_add.sh
